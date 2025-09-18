@@ -1,0 +1,52 @@
+name: Test Build
+
+on:
+  push:
+    branches: [ test-workflow ]
+  pull_request:
+    branches: [ test-workflow ]
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  test_build:
+    name: Test Build Binaries
+    strategy:
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-20.04
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-20.04
+          - target: x86_64-pc-windows-gnu
+            os: ubuntu-20.04
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build
+        uses: philss/rustler-precompiled-action@v1.1.4
+        id: precompile
+        with:
+          project-name: extractousex_native
+          project-version: test-0.1.0
+          target: ${{ matrix.target }}
+          use-cross: ${{ matrix.target != 'aarch64-apple-darwin' && matrix.target != 'x86_64-apple-darwin' }}
+
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-${{ steps.precompile.outputs.file-name }}
+          path: ${{ steps.precompile.outputs.file-path }}
+          retention-days: 1  # Keep artifacts for 1 day only
+
+      - name: List built files
+        run: |
+          echo "Built file: ${{ steps.precompile.outputs.file-path }}"
+          ls -la ${{ steps.precompile.outputs.file-path }}
+          echo "File size: $(du -h ${{ steps.precompile.outputs.file-path }} | cut -f1)"
