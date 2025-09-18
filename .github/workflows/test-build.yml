@@ -30,6 +30,11 @@ jobs:
         run: |
           echo "PROJECT_VERSION=$(sed -n 's/^  @version "\(.*\)"/\1/p' mix.exs | head -n1)" >> $GITHUB_ENV
 
+      - name: Add target
+        shell: bash
+        run: |
+          rustup target add ${{ matrix.job.target }}
+
       - name: Build the project
         id: build-crate
         uses: philss/rustler-precompiled-action@v1.1.4
