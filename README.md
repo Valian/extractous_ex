@@ -1,5 +1,33 @@
 # ExtractousEx
 
+<!-- MDOC -->
+
+<div align="center">
+  <br>
+
+  <a href="https://hex.pm/packages/extractous_ex">
+    <img alt="Hex Version" src="https://img.shields.io/hexpm/v/extractous_ex">
+  </a>
+
+  <a href="https://hexdocs.pm/extractous_ex">
+    <img alt="Hex Docs" src="http://img.shields.io/badge/hex.pm-docs-green.svg?style=flat">
+  </a>
+
+  <a href="https://github.com/Valian/extractous_ex/actions">
+    <img alt="CI" src="https://github.com/Valian/extractous_ex/workflows/Release/badge.svg">
+  </a>
+
+  <a href="https://opensource.org/licenses/MIT">
+    <img alt="MIT" src="https://img.shields.io/hexpm/l/extractous_ex">
+  </a>
+
+  <a href="https://hex.pm/packages/extractous_ex">
+    <img alt="Downloads" src="https://img.shields.io/hexpm/dt/extractous_ex">
+  </a>
+
+  <p align="center">Fast and comprehensive document text extraction for Elixir.</p>
+</div>
+
 ExtractousEx is an Elixir library for extracting text and metadata from various document formats using the powerful [Extractous](https://github.com/yobix-ai/extractous) Rust library.
 
 ## Features
@@ -163,9 +191,13 @@ This project uses GitHub Actions to automatically build precompiled binaries for
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Acknowledgments
+## Foundation
 
-- Built on the excellent [Extractous](https://github.com/yobix-ai/extractous) Rust library
-- Uses [Rustler](https://github.com/rusterlium/rustler) for Elixir-Rust integration
-- Precompiled binary distribution via [rustler_precompiled](https://github.com/philss/rustler_precompiled)
+The library is built on top of:
+
+- [Extractous](https://github.com/yobix-ai/extractous) - a fast Rust library for document text extraction
+- [Rustler](https://github.com/rusterlium/rustler) for seamless Elixir-Rust integration
+- [rustler_precompiled](https://github.com/philss/rustler_precompiled) for cross-platform binary distribution
+
+<!-- MDOC -->
 
