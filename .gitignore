@@ -21,3 +21,8 @@ extractous_ex-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+# Rust binary artifacts
+/target/
+
+.elixir_ls

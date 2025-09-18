@@ -1,0 +1,34 @@
+{
+  "document": {
+    "title": "JSON Test Document",
+    "type": "test",
+    "metadata": {
+      "author": "Test Author",
+      "created": "2024-01-01",
+      "version": "1.0"
+    },
+    "content": {
+      "sections": [
+        {
+          "id": 1,
+          "title": "Introduction",
+          "text": "This is a JSON document for testing text extraction capabilities."
+        },
+        {
+          "id": 2,
+          "title": "Features",
+          "text": "Testing various JSON structures including nested objects and arrays.",
+          "items": [
+            "Object extraction",
+            "Array handling",
+            "Special characters: áéíóú, ñ, €",
+            "Unicode support"
+          ]
+        }
+      ],
+      "conclusion": "The extraction should handle JSON structure appropriately."
+    },
+    "tags": ["test", "json", "extraction", "document"],
+    "special_chars": "Testing: !@#$%^&*()_+-=[]{}|;':\",./<>?"
+  }
+}

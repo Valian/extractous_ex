@@ -1,28 +1,44 @@
 defmodule ExtractousEx.MixProject do
   use Mix.Project
 
+  @dev? Mix.env() in [:dev, :test]
+  @force_build? System.get_env("FORCE_BUILD") in ["1", "true"]
+
   def project do
     [
       app: :extractous_ex,
       version: "0.1.0",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+
+      # Docs
+      name: "ExtractousEx",
+      source_url: "https://github.com/Valian/extractous_ex",
+      homepage_url: "http://github.com/Valian/extractous_ex",
+      docs: &docs/0
     ]
   end
 
-  # Run "mix help compile.app" to learn about applications.
+  def docs do
+    [
+      main: "readme",
+      extras: ["README.md"]
+    ]
+  end
+
   def application do
     [
       extra_applications: [:logger]
     ]
   end
 
-  # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:rustler, "~> 0.37"}
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
+      {:rustler, "~> 0.37", optional: not (@dev? or @force_build?)},
+      {:rustler_precompiled, "~> 0.7"},
+      {:jason, "~> 1.4"},
+      {:ex_doc, "~> 0.34", only: :dev, runtime: false, warn_if_outdated: true}
     ]
   end
 end

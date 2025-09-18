@@ -1,0 +1,12 @@
+This is a plain text document for testing text extraction.
+
+It contains multiple lines and paragraphs to verify that the extraction
+preserves the formatting and content correctly.
+
+Key features to test:
+- Multiple paragraphs
+- Special characters: áéíóú, ñ, €, @, #, $, %, &
+- Numbers: 1234567890
+- Punctuation: !@#$%^&*()_+-=[]{}|;':",./<>?
+
+This document should be extracted completely by the Extractous library.
