@@ -15,8 +15,10 @@ jobs:
       matrix:
         nif: ["2.15"]
         job:
+          - { target: aarch64-apple-darwin,      os: macos-14 }
           - { target: x86_64-apple-darwin,       os: macos-13 }
           - { target: x86_64-unknown-linux-gnu,  os: ubuntu-22.04 }
+          - { target: aarch64-unknown-linux-gnu, os: ubuntu-22.04, use-cross: true }
           - { target: x86_64-pc-windows-gnu,     os: windows-2022 }
 
     steps:
@@ -34,10 +36,24 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libssl-dev pkg-config
 
+      - name: Install Java for macOS (required for extractous)
+        if: runner.os == 'macOS'
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
       - name: Add target
         shell: bash
         run: |
           rustup target add ${{ matrix.job.target }}
+
+      - name: Setup cross-compilation environment
+        if: matrix.job.use-cross == true
+        shell: bash
+        run: |
+          echo "OPENSSL_STATIC=1" >> $GITHUB_ENV
+          echo "OPENSSL_VENDORED=1" >> $GITHUB_ENV
 
       - name: Build the project
         id: build-crate
