@@ -26,3 +26,4 @@ extractous_ex-*.tar
 /target/
 
 .elixir_ls
+checksum-*.exs
