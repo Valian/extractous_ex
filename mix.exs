@@ -29,7 +29,7 @@ defmodule ExtractousEx.MixProject do
 
   defp package do
     [
-      files: ~w(lib priv native .github mix.exs README.md LICENSE),
+      files: ~w(lib priv native .github mix.exs README.md LICENSE checksum-*.exs),
       licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/Valian/extractous_ex"},
       maintainers: ["Jakub Skałecki"]
