@@ -70,19 +70,29 @@ jobs:
               echo "::error::Failed to extract archive"; exit 1;
           }
 
-          NIF_LIB=$(find "$TEMP_DIR" -type f -name "libextractousex_native*") || {
-              echo "::error::Failed to search for NIF library"; exit 1;
-          }
+          # Windows uses .dll extension without lib prefix
+          if [[ "${{ matrix.job.target }}" == *windows* ]]; then
+              NIF_LIB=$(find "$TEMP_DIR" -type f -name "extractousex_native*.dll") || {
+                  echo "::error::Failed to search for NIF library"; exit 1;
+              }
+          else
+              NIF_LIB=$(find "$TEMP_DIR" -type f -name "libextractousex_native*") || {
+                  echo "::error::Failed to search for NIF library"; exit 1;
+              }
+          fi
 
           if [ -z "$NIF_LIB" ]; then
-              echo "::error::Could not find libextractousex_native library in archive"
+              echo "::error::Could not find NIF library in archive"
+              echo "Archive contents:"
+              ls -la "$TEMP_DIR"
               exit 1
           fi
 
           # Find libtika_native library in the build directory (only .so, .dylib, or .dll files)
-          TIKA_LIB=$(find target -type f \( -name "libtika_native.so" -o -name "libtika_native.dylib" -o -name "libtika_native.dll" \) -path "*/nativeCompile/*" 2>/dev/null | head -1)
+          # Windows might not have the "lib" prefix
+          TIKA_LIB=$(find target -type f \( -name "libtika_native.so" -o -name "libtika_native.dylib" -o -name "libtika_native.dll" -o -name "tika_native.dll" \) -path "*/nativeCompile/*" 2>/dev/null | head -1)
           if [ -z "$TIKA_LIB" ]; then
-              TIKA_LIB=$(find target -type f \( -name "libtika_native.so" -o -name "libtika_native.dylib" -o -name "libtika_native.dll" \) -path "*/libs/*" 2>/dev/null | head -1)
+              TIKA_LIB=$(find target -type f \( -name "libtika_native.so" -o -name "libtika_native.dylib" -o -name "libtika_native.dll" -o -name "tika_native.dll" \) -path "*/libs/*" 2>/dev/null | head -1)
           fi
 
           echo "Found tika library at: $TIKA_LIB"
@@ -129,6 +139,11 @@ jobs:
           if [[ "${{ matrix.job.target }}" == *linux* ]]; then
               echo "Fixing Linux library paths..."
               patchelf --set-rpath '$ORIGIN' "$NIF_LIB"
+          fi
+
+          if [[ "${{ matrix.job.target }}" == *windows* ]]; then
+              echo "Windows libraries use PATH for loading, no path fixing needed"
+              # Windows DLLs look for dependencies in the same directory by default
           fi
 
           # Re-package the archive
