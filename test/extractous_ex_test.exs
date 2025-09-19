@@ -13,7 +13,6 @@ defmodule ExtractousExTest do
     assert is_map(result.metadata)
   end
 
-
   test "extracts text content from plain text file" do
     txt_path = Path.join([__DIR__, "fixtures", "test-document.txt"])
     assert File.exists?(txt_path)
@@ -103,7 +102,9 @@ defmodule ExtractousExTest do
     assert is_binary(result.content)
     assert String.contains?(result.content, "HTML Document for Testing")
     # Should include XML/HTML structure when xml=true
-    assert String.contains?(result.content, "<html") or String.contains?(result.content, "<body") or String.contains?(result.content, "<")
+    assert String.contains?(result.content, "<html") or String.contains?(result.content, "<body") or
+             String.contains?(result.content, "<")
+
     assert is_map(result.metadata)
   end
 
@@ -130,4 +131,37 @@ defmodule ExtractousExTest do
     end
   end
 
+  @tag :tmp_dir
+  test "handles files with random bytes gracefully", %{tmp_dir: tmp_dir} do
+    # Create a temporary file with random bytes
+    tmp_path = Path.join(tmp_dir, "test_invalid.bin")
+
+    # Write random bytes that won't be recognized as any valid format
+    File.write!(tmp_path, :crypto.strong_rand_bytes(1024))
+
+    # Files without extensions are treated as binary/octet-stream by Tika
+    # They return successfully with empty content rather than an error
+    assert {:ok, %{content: "", metadata: metadata}} = ExtractousEx.extract_from_file(tmp_path)
+    assert metadata["Content-Type"] == ["application/octet-stream"]
+  end
+
+  @tag :tmp_dir
+  test "handles invalid PDF file with random bytes", %{tmp_dir: tmp_dir} do
+    # Create a temporary file with random bytes but .pdf extension
+    tmp_path = Path.join(tmp_dir, "test_invalid.pdf")
+
+    # Write random bytes that are not a valid PDF
+    File.write!(tmp_path, :crypto.strong_rand_bytes(1024))
+
+    # Invalid PDF files should either return an error or empty content
+    assert {:error, reason} = ExtractousEx.extract_from_file(tmp_path)
+    assert reason =~ "Illegal IOException from org.apache.tika.parser.pdf.PDFParser"
+  end
+
+  @tag :tmp_dir
+  test "returns error when file does not exist", %{tmp_dir: tmp_dir} do
+    non_existent_path = Path.join(tmp_dir, "non_existent.pdf")
+
+    assert {:error, _reason} = ExtractousEx.extract_from_file(non_existent_path)
+  end
 end

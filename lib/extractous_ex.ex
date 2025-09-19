@@ -32,19 +32,28 @@ defmodule ExtractousEx do
 
   Returns `{:error, reason}` on failure.
   """
-  @spec extract_from_file(String.t(), keyword()) :: {:ok, %{content: String.t(), metadata: map()}} | {:error, String.t()}
+  @spec extract_from_file(String.t(), keyword()) ::
+          {:ok, %{content: String.t(), metadata: map()}} | {:error, String.t()}
   def extract_from_file(file_path, opts \\ []) do
     xml = Keyword.get(opts, :xml, false)
 
     try do
-      {content, metadata_string} = Native.extract(file_path, xml)
+      case Native.extract(file_path, xml) do
+        {content, metadata_string} when is_binary(content) and is_binary(metadata_string) ->
+          metadata =
+            case Jason.decode(metadata_string) do
+              {:ok, parsed_metadata} -> parsed_metadata
+              {:error, _} -> %{}
+            end
 
-      metadata = case Jason.decode(metadata_string) do
-        {:ok, parsed_metadata} -> parsed_metadata
-        {:error, _} -> %{}
+          {:ok, %{content: content, metadata: metadata}}
+
+        {:error, reason} ->
+          {:error, reason}
+
+        other ->
+          {:error, "Unexpected response: #{inspect(other)}"}
       end
-
-      {:ok, %{content: content, metadata: metadata}}
     rescue
       error -> {:error, Exception.message(error)}
     end
