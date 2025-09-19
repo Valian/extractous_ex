@@ -221,4 +221,99 @@ defmodule ExtractousExTest do
       ExtractousEx.extract_from_file(txt_path, encoding: :utf8)
     end
   end
+
+  describe "extract_from_bytes/2" do
+    test "extracts text from PDF bytes" do
+      pdf_path = Path.join([__DIR__, "fixtures", "pdf-test.pdf"])
+      {:ok, pdf_bytes} = File.read(pdf_path)
+
+      {:ok, result} = ExtractousEx.extract_from_bytes(pdf_bytes)
+
+      assert is_binary(result.content)
+      assert String.length(result.content) > 0
+      assert is_map(result.metadata)
+    end
+
+    test "extracts text from plain text bytes" do
+      txt_path = Path.join([__DIR__, "fixtures", "test-document.txt"])
+      {:ok, txt_bytes} = File.read(txt_path)
+
+      {:ok, result} = ExtractousEx.extract_from_bytes(txt_bytes)
+
+      assert is_binary(result.content)
+      assert String.contains?(result.content, "This is a plain text document")
+      assert String.contains?(result.content, "Special characters: áéíóú")
+      assert is_map(result.metadata)
+    end
+
+    test "respects options for bytes extraction" do
+      txt_path = Path.join([__DIR__, "fixtures", "test-document.txt"])
+      {:ok, txt_bytes} = File.read(txt_path)
+
+      # Test with max_length
+      {:ok, result} = ExtractousEx.extract_from_bytes(txt_bytes, max_length: 20)
+      assert String.length(result.content) <= 20
+
+      # Test with XML output
+      {:ok, result_xml} = ExtractousEx.extract_from_bytes(txt_bytes, xml: true)
+      assert is_binary(result_xml.content)
+    end
+
+    test "raises error when bytes is not binary" do
+      assert_raise ArgumentError, "bytes must be a binary", fn ->
+        ExtractousEx.extract_from_bytes(123, [])
+      end
+    end
+
+    test "extract_from_bytes! raises on error" do
+      # Create invalid PDF-like data that will fail extraction
+      invalid_pdf = "%PDF-1.4\n" <> :crypto.strong_rand_bytes(100)
+
+      assert_raise RuntimeError, ~r/Failed to extract from bytes/, fn ->
+        ExtractousEx.extract_from_bytes!(invalid_pdf)
+      end
+    end
+  end
+
+  describe "extract_from_url/2" do
+    test "extracts text from a URL" do
+      # Using a small test file from GitHub raw content
+      url = "https://raw.githubusercontent.com/elixir-lang/elixir/main/LICENSE"
+
+      {:ok, result} = ExtractousEx.extract_from_url(url)
+
+      assert is_binary(result.content)
+      assert String.contains?(result.content, "Apache")
+      assert is_map(result.metadata)
+    end
+
+    test "respects options for URL extraction" do
+      url = "https://raw.githubusercontent.com/elixir-lang/elixir/main/LICENSE"
+
+      # Test with max_length
+      {:ok, result} = ExtractousEx.extract_from_url(url, max_length: 50)
+      assert String.length(result.content) <= 50
+
+      # Test with XML output
+      {:ok, result_xml} = ExtractousEx.extract_from_url(url, xml: true)
+      assert is_binary(result_xml.content)
+    end
+
+    test "returns error for invalid URL" do
+      {:error, reason} = ExtractousEx.extract_from_url("http://invalid-url-that-does-not-exist-12345.com/document.pdf")
+      assert is_binary(reason)
+    end
+
+    test "raises error when URL is not a string" do
+      assert_raise ArgumentError, "url must be a string", fn ->
+        ExtractousEx.extract_from_url(123, [])
+      end
+    end
+
+    test "extract_from_url! raises on error" do
+      assert_raise RuntimeError, ~r/Failed to extract from URL/, fn ->
+        ExtractousEx.extract_from_url!("http://invalid-url-that-does-not-exist-12345.com/document.pdf")
+      end
+    end
+  end
 end

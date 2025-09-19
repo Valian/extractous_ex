@@ -55,36 +55,53 @@ end
 
 ### Basic Text Extraction
 
+ExtractousEx provides three main extraction methods:
+
 ```elixir
-# Extract plain text from a document
+# Extract from a file on disk
 {:ok, result} = ExtractousEx.extract_from_file("document.pdf")
 
-# Access extracted content and metadata
-content = result.content
-metadata = result.metadata
+# Extract from binary data in memory
+{:ok, data} = File.read("document.pdf")
+{:ok, result} = ExtractousEx.extract_from_bytes(data)
 
-IO.puts(content)
+# Extract from a URL
+{:ok, result} = ExtractousEx.extract_from_url("https://example.com/document.pdf")
+
+# Access extracted content and metadata
+IO.puts(result.content)
 # => "Document text content..."
 
-IO.inspect(metadata)
+IO.inspect(result.metadata)
 # => %{"author" => "John Doe", "title" => "My Document", ...}
 ```
 
-### XML Output
+### Options
 
-For documents where structure matters, you can extract as XML:
+All extraction methods support the same options:
 
 ```elixir
 # Extract with XML structure preserved
 {:ok, result} = ExtractousEx.extract_from_file("document.html", xml: true)
 
-content = result.content
-# => "<html><body><h1>Title</h1><p>Content...</p></body></html>"
+# Limit extracted text length (default: 500,000 characters)
+{:ok, result} = ExtractousEx.extract_from_bytes(data, max_length: 100_000)
+
+# Specify encoding (UTF-8, UTF-16BE, US-ASCII)
+{:ok, result} = ExtractousEx.extract_from_url(url, encoding: "UTF-16BE")
+
+# Combine options
+{:ok, result} = ExtractousEx.extract_from_file("doc.pdf",
+  xml: true,
+  max_length: 50_000,
+  encoding: "UTF-8"
+)
 ```
 
 ### Error Handling
 
 ```elixir
+# Standard tuple return for all methods
 case ExtractousEx.extract_from_file("nonexistent.pdf") do
   {:ok, result} ->
     IO.puts("Content: #{result.content}")
@@ -92,8 +109,10 @@ case ExtractousEx.extract_from_file("nonexistent.pdf") do
     IO.puts("Failed to extract: #{reason}")
 end
 
-# Or use the bang version that raises on error
+# Bang versions available for all methods (raise on error)
 result = ExtractousEx.extract_from_file!("document.pdf")
+result = ExtractousEx.extract_from_bytes!(data)
+result = ExtractousEx.extract_from_url!(url)
 ```
 
 ## Supported Formats
@@ -138,38 +157,6 @@ ExtractousEx leverages the Extractous Rust library, which provides:
 - ~11x less memory consumption
 - High-quality content extraction across formats
 
-## Examples
-
-### Extract from Multiple Formats
-
-```elixir
-files = ["report.pdf", "data.csv", "presentation.pptx", "webpage.html"]
-
-Enum.each(files, fn file ->
-  case ExtractousEx.extract_from_file(file) do
-    {:ok, result} ->
-      IO.puts("#{file}: #{String.slice(result.content, 0, 100)}...")
-    {:error, reason} ->
-      IO.puts("Failed to extract #{file}: #{reason}")
-  end
-end)
-```
-
-### Batch Processing
-
-```elixir
-files = Path.wildcard("documents/*.{pdf,docx,html}")
-
-results = files
-|> Task.async_stream(fn file ->
-  {file, ExtractousEx.extract_from_file(file)}
-end, max_concurrency: System.schedulers_online())
-|> Enum.map(fn {:ok, result} -> result end)
-
-for {file, {:ok, result}} <- results do
-  IO.puts("#{file}: #{byte_size(result.content)} characters extracted")
-end
-```
 
 ## Building and Releasing
 

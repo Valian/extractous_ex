@@ -19,4 +19,10 @@ defmodule ExtractousEx.Native do
 
   # Extract text and metadata from a file with optional XML output, max_length, and encoding
   def extract(_file_path, _as_xml, _max_length, _encoding), do: :erlang.nif_error(:nif_not_loaded)
+
+  # Extract text and metadata from bytes with optional XML output, max_length, and encoding
+  def extract_bytes(_buffer, _as_xml, _max_length, _encoding), do: :erlang.nif_error(:nif_not_loaded)
+
+  # Extract text and metadata from a URL with optional XML output, max_length, and encoding
+  def extract_url(_url, _as_xml, _max_length, _encoding), do: :erlang.nif_error(:nif_not_loaded)
 end
