@@ -1,7 +1,7 @@
 defmodule ExtractousEx.MixProject do
   use Mix.Project
 
-  @version "0.1.0"
+  @version "0.1.1"
   @dev? Mix.env() in [:dev, :test]
   @force_build? System.get_env("FORCE_BUILD") in ["1", "true"]
 
