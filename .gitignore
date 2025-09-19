@@ -25,5 +25,10 @@ extractous_ex-*.tar
 # Rust binary artifacts
 /target/
 
+# Compiled NIF libraries
+/priv/native/*.so
+/priv/native/*.dylib
+/priv/native/*.dll
+
 .elixir_ls
 checksum-*.exs

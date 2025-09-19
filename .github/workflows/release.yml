@@ -33,7 +33,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libssl-dev pkg-config
+          sudo apt-get install -y libssl-dev pkg-config patchelf
 
 
       - name: Install Java for macOS (required for extractous)
@@ -58,6 +58,93 @@ jobs:
           target: ${{ matrix.job.target }}
           nif-version: ${{ matrix.nif }}
           use-cross: ${{ matrix.job.use-cross }}
+
+      - name: Modify archive to fix library paths
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          TEMP_DIR=$(mktemp -d)
+
+          tar -xzf "${{ steps.build-crate.outputs.file-path }}" -C "$TEMP_DIR" || {
+              echo "::error::Failed to extract archive"; exit 1;
+          }
+
+          NIF_LIB=$(find "$TEMP_DIR" -type f -name "libextractousex_native*") || {
+              echo "::error::Failed to search for NIF library"; exit 1;
+          }
+
+          if [ -z "$NIF_LIB" ]; then
+              echo "::error::Could not find libextractousex_native library in archive"
+              exit 1
+          fi
+
+          # Find libtika_native library in the build directory
+          TIKA_LIB=$(find target -type f -path "*/nativeCompile/libtika_native.*" 2>/dev/null)
+          if [ -z "$TIKA_LIB" ]; then
+              TIKA_LIB=$(find target -type f -path "*/libs/libtika_native.*" 2>/dev/null)
+          fi
+
+          echo "Found tika library at: $TIKA_LIB"
+
+          if [ -z "$TIKA_LIB" ]; then
+              echo "::error::Could not find libtika_native library"
+              if [ -d "target" ]; then
+                  echo "Directory contents of target:"
+                  find target -type f -name "libtika_native.*"
+              fi
+              exit 1
+          fi
+
+          # Copy the tika library to the archive
+          cp "$TIKA_LIB" "$TEMP_DIR/$(basename "$TIKA_LIB")"
+
+          # Copy any additional native libraries from extractous
+          LIBS=$(find target -type d -path "*/extractous-*/out/libs" 2>/dev/null)
+          for dir in $LIBS; do
+            if [ -d "$dir" ]; then
+              cp -r "$dir"/* "$TEMP_DIR" 2>/dev/null || true
+            fi
+          done
+
+          # Fix library paths based on platform
+          if [[ "${{ matrix.job.target }}" == *darwin* ]]; then
+              echo "Fixing macOS library paths..."
+              echo "Before modifications:"
+              otool -L "$NIF_LIB"
+
+              ORIGINAL_PATHS=$(otool -L "$NIF_LIB" | grep libtika_native | awk '{print $1}')
+
+              while IFS= read -r path; do
+                  if [ -n "$path" ]; then
+                      echo "Changing path: $path to @loader_path/$(basename "$TIKA_LIB")"
+                      install_name_tool -change "$path" "@loader_path/$(basename "$TIKA_LIB")" "$NIF_LIB"
+                  fi
+              done <<< "$ORIGINAL_PATHS"
+
+              echo "After modifications:"
+              otool -L "$NIF_LIB"
+          fi
+
+          if [[ "${{ matrix.job.target }}" == *linux* ]]; then
+              echo "Fixing Linux library paths..."
+              patchelf --set-rpath '$ORIGIN' "$NIF_LIB"
+          fi
+
+          # Re-package the archive
+          cd "$TEMP_DIR" || exit 1
+          tar -czf archive.tar.gz ./* || {
+              echo "::error::Failed to create new archive"
+              exit 1
+          }
+          cd - || exit 1
+
+          mv "$TEMP_DIR/archive.tar.gz" "${{ steps.build-crate.outputs.file-path }}" || {
+              echo "::error::Failed to move new archive"
+              exit 1
+          }
+
+          rm -rf "$TEMP_DIR"
 
       - name: Artifact upload
         uses: actions/upload-artifact@v4
