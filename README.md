@@ -187,5 +187,3 @@ The library is built on top of:
 - [rustler_precompiled](https://github.com/philss/rustler_precompiled) for cross-platform binary distribution
 
 <!-- MDOC -->
-
-`
