@@ -68,12 +68,6 @@ jobs:
       - name: Build the project
         id: build-crate
         uses: philss/rustler-precompiled-action@v1.1.4
-        env:
-          # Ensure OpenSSL is built from source in cross containers (fixes aarch64 Linux)
-          OPENSSL_VENDORED: "1"
-          OPENSSL_NO_PKG_CONFIG: "1"
-          OPENSSL_STATIC: "1"
-          PKG_CONFIG_ALLOW_CROSS: "1"
         with:
           project-name: extractousex_native
           project-version: test-${{ env.PROJECT_VERSION }}
