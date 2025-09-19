@@ -176,7 +176,7 @@ This project uses GitHub Actions to automatically build precompiled binaries for
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. Extractous which this library depends upon is licensed under the Apache License 2.0 - see the [LICENSE](https://github.com/yobix-ai/extractous/blob/main/LICENSE) file for details.
 
 ## Foundation
 
