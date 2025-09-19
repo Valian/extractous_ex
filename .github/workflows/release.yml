@@ -79,19 +79,19 @@ jobs:
               exit 1
           fi
 
-          # Find libtika_native library in the build directory
-          TIKA_LIB=$(find target -type f -path "*/nativeCompile/libtika_native.*" 2>/dev/null)
+          # Find libtika_native library in the build directory (only .so, .dylib, or .dll files)
+          TIKA_LIB=$(find target -type f \( -name "libtika_native.so" -o -name "libtika_native.dylib" -o -name "libtika_native.dll" \) -path "*/nativeCompile/*" 2>/dev/null | head -1)
           if [ -z "$TIKA_LIB" ]; then
-              TIKA_LIB=$(find target -type f -path "*/libs/libtika_native.*" 2>/dev/null)
+              TIKA_LIB=$(find target -type f \( -name "libtika_native.so" -o -name "libtika_native.dylib" -o -name "libtika_native.dll" \) -path "*/libs/*" 2>/dev/null | head -1)
           fi
 
           echo "Found tika library at: $TIKA_LIB"
 
           if [ -z "$TIKA_LIB" ]; then
-              echo "::error::Could not find libtika_native library"
+              echo "::error::Could not find libtika_native library (.so, .dylib, or .dll)"
               if [ -d "target" ]; then
-                  echo "Directory contents of target:"
-                  find target -type f -name "libtika_native.*"
+                  echo "Directory contents of target (all libtika_native files):"
+                  find target -type f -name "libtika_native.*" -exec ls -la {} \;
               fi
               exit 1
           fi
