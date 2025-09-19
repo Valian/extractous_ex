@@ -17,6 +17,6 @@ defmodule ExtractousEx.Native do
     mode: if(Mix.env() in [:dev, :test], do: :debug, else: :release),
     force_build: System.get_env("EXTRACTOUS_EX_BUILD") in ["1", "true"]
 
-  # Extract text and metadata from a file with optional XML output
-  def extract(_file_path, _as_xml), do: :erlang.nif_error(:nif_not_loaded)
+  # Extract text and metadata from a file with optional XML output, max_length, and encoding
+  def extract(_file_path, _as_xml, _max_length, _encoding), do: :erlang.nif_error(:nif_not_loaded)
 end

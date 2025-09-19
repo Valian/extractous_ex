@@ -164,4 +164,61 @@ defmodule ExtractousExTest do
 
     assert {:error, _reason} = ExtractousEx.extract_from_file(non_existent_path)
   end
+
+  test "respects max_length option" do
+    txt_path = Path.join([__DIR__, "fixtures", "test-document.txt"])
+    assert File.exists?(txt_path)
+
+    # Test with a very small max_length
+    {:ok, result} = ExtractousEx.extract_from_file(txt_path, max_length: 10)
+
+    assert is_binary(result.content)
+    # Content should be truncated
+    assert String.length(result.content) <= 10
+    assert is_map(result.metadata)
+  end
+
+  test "accepts encoding option" do
+    txt_path = Path.join([__DIR__, "fixtures", "test-document.txt"])
+    assert File.exists?(txt_path)
+
+    # Test with UTF-8 encoding (default)
+    {:ok, result_utf8} = ExtractousEx.extract_from_file(txt_path, encoding: "UTF-8")
+    assert is_binary(result_utf8.content)
+    assert is_map(result_utf8.metadata)
+
+    # Test with US-ASCII encoding
+    {:ok, result_ascii} = ExtractousEx.extract_from_file(txt_path, encoding: "US-ASCII")
+    assert is_binary(result_ascii.content)
+    assert is_map(result_ascii.metadata)
+
+    # Test with UTF-16BE encoding
+    {:ok, result_utf16} = ExtractousEx.extract_from_file(txt_path, encoding: "UTF-16BE")
+    assert is_binary(result_utf16.content)
+    assert is_map(result_utf16.metadata)
+  end
+
+  test "returns error for invalid encoding" do
+    txt_path = Path.join([__DIR__, "fixtures", "test-document.txt"])
+    assert File.exists?(txt_path)
+
+    {:error, reason} = ExtractousEx.extract_from_file(txt_path, encoding: "INVALID-ENCODING")
+    assert reason =~ "Unsupported encoding"
+  end
+
+  test "raises error when max_length is not an integer" do
+    txt_path = Path.join([__DIR__, "fixtures", "test-document.txt"])
+
+    assert_raise ArgumentError, "max_length must be an integer", fn ->
+      ExtractousEx.extract_from_file(txt_path, max_length: "100")
+    end
+  end
+
+  test "raises error when encoding is not a string" do
+    txt_path = Path.join([__DIR__, "fixtures", "test-document.txt"])
+
+    assert_raise ArgumentError, "encoding must be a string", fn ->
+      ExtractousEx.extract_from_file(txt_path, encoding: :utf8)
+    end
+  end
 end
