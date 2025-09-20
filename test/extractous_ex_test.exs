@@ -316,4 +316,169 @@ defmodule ExtractousExTest do
       end
     end
   end
+
+  describe "advanced options (JSON configuration)" do
+    test "accepts keyword list configuration with top-level options" do
+      txt_path = Path.join([__DIR__, "fixtures", "test-document.txt"])
+
+      # Test with advanced keyword list options
+      opts = [
+        max_length: 100,
+        xml: false,
+        encoding: "UTF-8"
+      ]
+
+      {:ok, result} = ExtractousEx.extract_from_file(txt_path, opts)
+
+      assert is_binary(result.content)
+      assert String.length(result.content) <= 100
+      assert is_map(result.metadata)
+    end
+
+    test "accepts PDF-specific options" do
+      pdf_path = Path.join([__DIR__, "fixtures", "pdf-test.pdf"])
+
+      opts = [
+        xml: false,
+        pdf: [
+          ocr_strategy: "NO_OCR",
+          extract_annotation_text: false
+        ]
+      ]
+
+      {:ok, result} = ExtractousEx.extract_from_file(pdf_path, opts)
+
+      assert is_binary(result.content)
+      assert is_map(result.metadata)
+    end
+
+    test "accepts Office-specific options" do
+      txt_path = Path.join([__DIR__, "fixtures", "test-document.txt"])
+
+      opts = [
+        office: [
+          include_headers_and_footers: true,
+          include_deleted_content: false,
+          include_shape_based_content: true
+        ]
+      ]
+
+      {:ok, result} = ExtractousEx.extract_from_file(txt_path, opts)
+
+      assert is_binary(result.content)
+      assert is_map(result.metadata)
+    end
+
+    test "accepts OCR-specific options" do
+      txt_path = Path.join([__DIR__, "fixtures", "test-document.txt"])
+
+      opts = [
+        ocr: [
+          language: "eng",
+          timeout_seconds: 30,
+          density: 150,
+          depth: 4,
+          apply_rotation: false,
+          enable_image_preprocessing: true
+        ]
+      ]
+
+      {:ok, result} = ExtractousEx.extract_from_file(txt_path, opts)
+
+      assert is_binary(result.content)
+      assert is_map(result.metadata)
+    end
+
+    test "accepts comprehensive configuration with all option groups" do
+      txt_path = Path.join([__DIR__, "fixtures", "test-document.txt"])
+
+      opts = [
+        max_length: 50000,
+        xml: true,
+        encoding: "UTF-8",
+        pdf: [
+          ocr_strategy: "AUTO",
+          extract_annotation_text: true,
+          extract_inline_images: false
+        ],
+        office: [
+          include_slide_notes: true,
+          include_headers_and_footers: false
+        ],
+        ocr: [
+          language: "eng+deu",
+          timeout_seconds: 60
+        ]
+      ]
+
+      {:ok, result} = ExtractousEx.extract_from_file(txt_path, opts)
+
+      assert is_binary(result.content)
+      assert is_map(result.metadata)
+    end
+
+    test "works with extract_from_bytes using advanced options" do
+      txt_path = Path.join([__DIR__, "fixtures", "test-document.txt"])
+      {:ok, txt_bytes} = File.read(txt_path)
+
+      opts = [
+        max_length: 200,
+        xml: false,
+        pdf: [
+          ocr_strategy: "NO_OCR"
+        ]
+      ]
+
+      {:ok, result} = ExtractousEx.extract_from_bytes(txt_bytes, opts)
+
+      assert is_binary(result.content)
+      assert String.length(result.content) <= 200
+      assert is_map(result.metadata)
+    end
+
+    test "works with extract_from_url using advanced options" do
+      url = "https://raw.githubusercontent.com/elixir-lang/elixir/main/LICENSE"
+
+      opts = [
+        max_length: 100,
+        xml: false
+      ]
+
+      {:ok, result} = ExtractousEx.extract_from_url(url, opts)
+
+      assert is_binary(result.content)
+      assert String.length(result.content) <= 100
+      assert is_map(result.metadata)
+    end
+
+    test "backwards compatibility - simple options still work" do
+      txt_path = Path.join([__DIR__, "fixtures", "test-document.txt"])
+
+      # Test that the old simple format still works
+      {:ok, result1} = ExtractousEx.extract_from_file(txt_path, xml: false, max_length: 100)
+      assert String.length(result1.content) <= 100
+
+      {:ok, result2} = ExtractousEx.extract_from_file(txt_path, xml: true)
+      assert is_binary(result2.content)
+
+      {:ok, result3} = ExtractousEx.extract_from_file(txt_path, encoding: "UTF-8")
+      assert is_binary(result3.content)
+    end
+
+    test "raises error for invalid options format" do
+      txt_path = Path.join([__DIR__, "fixtures", "test-document.txt"])
+
+      assert_raise ArgumentError, ~r/Options must be a keyword list/, fn ->
+        ExtractousEx.extract_from_file(txt_path, "invalid_options")
+      end
+    end
+
+    test "raises error for non-keyword list nested options" do
+      txt_path = Path.join([__DIR__, "fixtures", "test-document.txt"])
+
+      assert_raise ArgumentError, ~r/pdf options must be a keyword list/, fn ->
+        ExtractousEx.extract_from_file(txt_path, pdf: "invalid")
+      end
+    end
+  end
 end
