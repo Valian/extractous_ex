@@ -98,7 +98,7 @@ check_artifacts_ready() {
         "libextractousex_native-v${version}-nif-2.15-aarch64-apple-darwin.so.tar.gz"
         "libextractousex_native-v${version}-nif-2.15-x86_64-apple-darwin.so.tar.gz"
         "libextractousex_native-v${version}-nif-2.15-x86_64-unknown-linux-gnu.so.tar.gz"
-        "libextractousex_native-v${version}-nif-2.15-x86_64-pc-windows-gnu.dll.tar.gz"
+        "extractousex_native-v${version}-nif-2.15-x86_64-pc-windows-gnu.dll.tar.gz"
     )
 
     for artifact in "${artifacts[@]}"; do
