@@ -7,8 +7,9 @@ on:
 
 jobs:
   build_arm64_linux:
-    name: NIF 2.15 - aarch64-unknown-linux-gnu (ubuntu-22.04)
-    runs-on: ubuntu-22.04
+    name: NIF 2.15 - aarch64-unknown-linux-gnu (native ARM64)
+    # Use GitHub's native ARM64 runner - available free for public repos
+    runs-on: ubuntu-22.04-arm
 
     steps:
       - name: Checkout source code
@@ -24,21 +25,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libssl-dev pkg-config patchelf
 
-      - name: Add target
-        shell: bash
-        run: |
-          rustup target add aarch64-unknown-linux-gnu
-
-      - name: Install cross (for cross-compilation)
-        shell: bash
-        run: |
-          cargo install cross --git https://github.com/cross-rs/cross
-
-      - name: Install cross-compilation tools (Linux ARM64)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-
       - name: Build the project
         id: build-crate
         uses: philss/rustler-precompiled-action@v1.1.4
@@ -47,7 +33,7 @@ jobs:
           project-version: ${{ env.PROJECT_VERSION }}
           target: aarch64-unknown-linux-gnu
           nif-version: "2.15"
-          use-cross: true
+          use-cross: false
 
       - name: Modify archive to fix library paths
         shell: bash

@@ -1,19 +1,13 @@
-# Keep cross simple; prefer system OpenSSL inside the target image
+# Cross-compilation configuration for extractous_ex
+# Note: We use native ARM64 GitHub runners instead of cross-compilation
+# because extractous uses GraalVM native-image which requires running on
+# the target architecture.
+
 [build.env]
-# Pass these host env vars into the container (values are set in the workflow)
 passthrough = [
   "OPENSSL_DIR",
   "OPENSSL_INCLUDE_DIR",
   "OPENSSL_LIB_DIR",
   "PKG_CONFIG_PATH",
-  "PKG_CONFIG_ALLOW_CROSS",
-  "CC_aarch64_unknown_linux_gnu",
-  "CXX_aarch64_unknown_linux_gnu"
-]
-
-# Install libssl-dev for the target arch before building
-[target.aarch64-unknown-linux-gnu]
-pre-build = [
-  "dpkg --add-architecture $CROSS_DEB_ARCH",
-  "apt-get update && apt-get --assume-yes install libssl-dev:$CROSS_DEB_ARCH"
+  "PKG_CONFIG_ALLOW_CROSS"
 ]
