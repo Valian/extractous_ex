@@ -8,7 +8,6 @@ on:
 jobs:
   build_arm64_linux:
     name: NIF 2.15 - aarch64-unknown-linux-gnu (native ARM64)
-    # Use GitHub's native ARM64 runner - available free for public repos
     runs-on: ubuntu-22.04-arm
 
     steps:
@@ -20,92 +19,93 @@ jobs:
         run: |
           echo "PROJECT_VERSION=$(sed -n 's/^  @version "\(.*\)"/\1/p' mix.exs | head -n1)" >> $GITHUB_ENV
 
-      - name: Install system dependencies (Linux)
+      - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libssl-dev pkg-config patchelf
 
-      - name: Build the project
-        id: build-crate
-        uses: philss/rustler-precompiled-action@v1.1.4
+      - name: Install Rust
+        uses: dtolnay/rust-action@stable
         with:
-          project-name: extractousex_native
-          project-version: ${{ env.PROJECT_VERSION }}
-          target: aarch64-unknown-linux-gnu
-          nif-version: "2.15"
-          use-cross: false
+          targets: aarch64-unknown-linux-gnu
 
-      - name: Modify archive to fix library paths
+      - name: Build NIF in release mode
+        shell: bash
+        env:
+          RUSTLER_NIF_VERSION: "2.15"
+        run: |
+          cd native/extractousex_native
+          cargo build --release --target aarch64-unknown-linux-gnu
+
+      - name: Package the NIF
+        id: package
         shell: bash
         run: |
-          set -euo pipefail
+          VERSION="${{ env.PROJECT_VERSION }}"
+          TARGET="aarch64-unknown-linux-gnu"
+          NIF_VERSION="2.15"
+
+          LIB_DIR="target/${TARGET}/release"
+          LIB_NAME="libextractousex_native.so"
+          FINAL_NAME="libextractousex_native-v${VERSION}-nif-${NIF_VERSION}-${TARGET}.so"
+          TAR_FILE="${FINAL_NAME}.tar.gz"
 
           TEMP_DIR=$(mktemp -d)
 
-          tar -xzf "${{ steps.build-crate.outputs.file-path }}" -C "$TEMP_DIR" || {
-              echo "::error::Failed to extract archive"; exit 1;
-          }
+          # Copy the NIF library
+          cp "${LIB_DIR}/${LIB_NAME}" "${TEMP_DIR}/${FINAL_NAME}"
 
-          NIF_LIB=$(find "$TEMP_DIR" -type f -name "libextractousex_native*") || {
-              echo "::error::Failed to search for NIF library"; exit 1;
-          }
-
-          if [ -z "$NIF_LIB" ]; then
-              echo "::error::Could not find NIF library in archive"
-              echo "Archive contents:"
-              ls -la "$TEMP_DIR"
-              exit 1
+          # Find and copy libtika_native
+          TIKA_LIB=$(find target -type f -name "libtika_native.so" -path "*/nativeCompile/*" 2>/dev/null | head -1)
+          if [ -z "$TIKA_LIB" ]; then
+              TIKA_LIB=$(find target -type f -name "libtika_native.so" -path "*/libs/*" 2>/dev/null | head -1)
           fi
 
-          # Find libtika_native library in the build directory
-          TIKA_LIB=$(find target -type f \( -name "libtika_native.so" -o -name "libtika_native.dylib" \) -path "*/nativeCompile/*" 2>/dev/null | head -1)
           if [ -z "$TIKA_LIB" ]; then
-              TIKA_LIB=$(find target -type f \( -name "libtika_native.so" -o -name "libtika_native.dylib" \) -path "*/libs/*" 2>/dev/null | head -1)
+              echo "::error::Could not find libtika_native.so"
+              echo "Searching for any libtika_native files:"
+              find target -type f -name "libtika_native*" -exec ls -la {} \;
+              exit 1
           fi
 
           echo "Found tika library at: $TIKA_LIB"
-
-          if [ -z "$TIKA_LIB" ]; then
-              echo "::error::Could not find libtika_native library (.so, .dylib)"
-              if [ -d "target" ]; then
-                  echo "Directory contents of target (all libtika_native files):"
-                  find target -type f -name "libtika_native.*" -exec ls -la {} \;
-              fi
-              exit 1
-          fi
-
-          # Copy the tika library to the archive
-          cp "$TIKA_LIB" "$TEMP_DIR/$(basename "$TIKA_LIB")"
+          cp "$TIKA_LIB" "$TEMP_DIR/"
 
           # Copy any additional native libraries from extractous
           LIBS=$(find target -type d -path "*/extractous-*/out/libs" 2>/dev/null)
           for dir in $LIBS; do
             if [ -d "$dir" ]; then
-              cp -r "$dir"/* "$TEMP_DIR" 2>/dev/null || true
+              echo "Copying libs from: $dir"
+              cp -r "$dir"/* "$TEMP_DIR/" 2>/dev/null || true
             fi
           done
 
-          # Fix Linux library paths
-          echo "Fixing Linux library paths..."
-          patchelf --set-rpath '$ORIGIN' "$NIF_LIB"
+          # Fix library rpath
+          echo "Fixing library paths..."
+          patchelf --set-rpath '$ORIGIN' "${TEMP_DIR}/${FINAL_NAME}"
 
-          # Re-package the archive
-          cd "$TEMP_DIR" || exit 1
-          tar -czf archive.tar.gz ./* || {
-              echo "::error::Failed to create new archive"
-              exit 1
-          }
-          cd - || exit 1
+          # List contents
+          echo "Archive contents:"
+          ls -la "$TEMP_DIR"
 
-          mv "$TEMP_DIR/archive.tar.gz" "${{ steps.build-crate.outputs.file-path }}" || {
-              echo "::error::Failed to move new archive"
-              exit 1
-          }
+          # Create archive
+          cd "$TEMP_DIR"
+          tar -czvf "$TAR_FILE" ./*
+          mv "$TAR_FILE" "$GITHUB_WORKSPACE/"
+          cd "$GITHUB_WORKSPACE"
 
-          rm -rf "$TEMP_DIR"
+          # Compute checksum
+          SHA256=$(sha256sum "$TAR_FILE" | cut -d' ' -f1)
+
+          echo "file-path=${TAR_FILE}" >> $GITHUB_OUTPUT
+          echo "file-name=${TAR_FILE}" >> $GITHUB_OUTPUT
+          echo "file-sha256=${SHA256}" >> $GITHUB_OUTPUT
+
+          echo "Created: $TAR_FILE"
+          echo "SHA256: $SHA256"
 
       - name: Artifact upload
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.build-crate.outputs.file-name }}
-          path: ${{ steps.build-crate.outputs.file-path }}
+          name: ${{ steps.package.outputs.file-name }}
+          path: ${{ steps.package.outputs.file-path }}
