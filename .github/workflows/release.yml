@@ -6,6 +6,7 @@ on:
       - "v*"
 
 jobs:
+  # Standard builds using rustler-precompiled-action
   build_release:
     name: NIF ${{ matrix.nif }} - ${{ matrix.job.target }} (${{ matrix.job.os }})
     runs-on: ${{ matrix.job.os }}
@@ -47,7 +48,6 @@ jobs:
         shell: bash
         run: |
           rustup target add ${{ matrix.job.target }}
-
 
       - name: Build the project
         id: build-crate
@@ -172,4 +172,116 @@ jobs:
         with:
           files: |
             ${{ steps.build-crate.outputs.file-path }}
+        if: startsWith(github.ref, 'refs/tags/')
+
+  # ARM64 Linux build - uses native ARM64 runner (can't use rustler-precompiled-action)
+  build_arm64_linux:
+    name: NIF 2.15 - aarch64-unknown-linux-gnu (native ARM64)
+    runs-on: ubuntu-22.04-arm
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Extract crate information
+        shell: bash
+        run: |
+          echo "PROJECT_VERSION=$(sed -n 's/^  @version "\(.*\)"/\1/p' mix.exs | head -n1)" >> $GITHUB_ENV
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libssl-dev pkg-config patchelf
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-gnu
+
+      - name: Build NIF in release mode
+        shell: bash
+        env:
+          RUSTLER_NIF_VERSION: "2.15"
+        run: |
+          cd native/extractousex_native
+          cargo build --release --target aarch64-unknown-linux-gnu
+
+      - name: Package the NIF
+        id: package
+        shell: bash
+        run: |
+          VERSION="${{ env.PROJECT_VERSION }}"
+          TARGET="aarch64-unknown-linux-gnu"
+          NIF_VERSION="2.15"
+
+          LIB_DIR="target/${TARGET}/release"
+          LIB_NAME="libextractousex_native.so"
+          FINAL_NAME="libextractousex_native-v${VERSION}-nif-${NIF_VERSION}-${TARGET}.so"
+          TAR_FILE="${FINAL_NAME}.tar.gz"
+
+          TEMP_DIR=$(mktemp -d)
+
+          # Copy the NIF library
+          cp "${LIB_DIR}/${LIB_NAME}" "${TEMP_DIR}/${FINAL_NAME}"
+
+          # Find and copy libtika_native
+          TIKA_LIB=$(find target -type f -name "libtika_native.so" -path "*/nativeCompile/*" 2>/dev/null | head -1)
+          if [ -z "$TIKA_LIB" ]; then
+              TIKA_LIB=$(find target -type f -name "libtika_native.so" -path "*/libs/*" 2>/dev/null | head -1)
+          fi
+
+          if [ -z "$TIKA_LIB" ]; then
+              echo "::error::Could not find libtika_native.so"
+              echo "Searching for any libtika_native files:"
+              find target -type f -name "libtika_native*" -exec ls -la {} \;
+              exit 1
+          fi
+
+          echo "Found tika library at: $TIKA_LIB"
+          cp "$TIKA_LIB" "$TEMP_DIR/"
+
+          # Copy any additional native libraries from extractous
+          LIBS=$(find target -type d -path "*/extractous-*/out/libs" 2>/dev/null)
+          for dir in $LIBS; do
+            if [ -d "$dir" ]; then
+              echo "Copying libs from: $dir"
+              cp -r "$dir"/* "$TEMP_DIR/" 2>/dev/null || true
+            fi
+          done
+
+          # Fix library rpath
+          echo "Fixing library paths..."
+          patchelf --set-rpath '$ORIGIN' "${TEMP_DIR}/${FINAL_NAME}"
+
+          # List contents
+          echo "Archive contents:"
+          ls -la "$TEMP_DIR"
+
+          # Create archive
+          cd "$TEMP_DIR"
+          tar -czvf "$TAR_FILE" ./*
+          mv "$TAR_FILE" "$GITHUB_WORKSPACE/"
+          cd "$GITHUB_WORKSPACE"
+
+          # Compute checksum
+          SHA256=$(sha256sum "$TAR_FILE" | cut -d' ' -f1)
+
+          echo "file-path=${TAR_FILE}" >> $GITHUB_OUTPUT
+          echo "file-name=${TAR_FILE}" >> $GITHUB_OUTPUT
+          echo "file-sha256=${SHA256}" >> $GITHUB_OUTPUT
+
+          echo "Created: $TAR_FILE"
+          echo "SHA256: $SHA256"
+
+      - name: Artifact upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.file-name }}
+          path: ${{ steps.package.outputs.file-path }}
+
+      - name: Publish archives and packages
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ steps.package.outputs.file-path }}
         if: startsWith(github.ref, 'refs/tags/')
