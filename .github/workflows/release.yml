@@ -15,10 +15,11 @@ jobs:
       matrix:
         nif: ["2.15"]
         job:
-          - { target: aarch64-apple-darwin,      os: macos-14 }
-          - { target: x86_64-apple-darwin,       os: macos-13 }
-          - { target: x86_64-unknown-linux-gnu,  os: ubuntu-22.04 }
-          - { target: x86_64-pc-windows-gnu,     os: windows-2022 }
+          # - { target: aarch64-apple-darwin,      os: macos-14 }
+          # - { target: x86_64-apple-darwin,       os: macos-13 }
+          # - { target: x86_64-unknown-linux-gnu,  os: ubuntu-22.04 }
+          # - { target: x86_64-pc-windows-gnu,     os: windows-2022 }
+          - { target: aarch64-unknown-linux-gnu, os: ubuntu-22.04, use-cross: true }
 
     steps:
       - name: Checkout source code
@@ -48,6 +49,17 @@ jobs:
         run: |
           rustup target add ${{ matrix.job.target }}
 
+      - name: Install cross (for cross-compilation)
+        if: matrix.job.use-cross
+        shell: bash
+        run: |
+          cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Install cross-compilation tools (Linux ARM64)
+        if: matrix.job.use-cross && matrix.job.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 
       - name: Build the project
         id: build-crate
